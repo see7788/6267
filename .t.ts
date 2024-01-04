@@ -1,12 +1,11 @@
 import axios, { AxiosResponse } from "axios"
 import { z } from 'zod';
 import mqttClient from "mqtt"
-//////////8888888///////
-type Returninfer_t<T extends (db: any) => Promise<any> | any> = ReturnType<T> extends Promise<infer R> ? R : ReturnType<T>
-export type Obj_t = { [k in string]: (db: any) => Promise<any> | any }
-export type ObjExtendsReturninfer_t<T extends Obj_t> = { [K in keyof T]: (db: Returninfer_t<T[K]>) => Promise<any> | any }
-export type send_t<T extends Obj_t> = <K extends keyof T>(api: K extends string ? K : never, db: Parameters<T[K]>[0]) => any
-export type call_t<T extends Obj_t> = <K extends keyof T>(api: K extends string ? K : never, db: Parameters<T[K]>[0]) => Promise<{ api: K, db: Returninfer_t<T[K]> }>
+type Returninfer_t<T extends (db: any) => Promise<any> | any> = ReturnType<T> extends Promise<infer R> ? R : never//ReturnType<T>
+export type Obj_t = { [k in string]: (db: any) => Promise<any> }// | any }
+export type ObjExtendsReturninfer_t<T extends Obj_t> = { [K in keyof T]: (db: Returninfer_t<T[K]>) => Promise<any> }// | any }
+export type send_t<T extends Obj_t> = <K extends keyof T>(api: K, db: Parameters<T[K]>[0]) => void
+export type call_t<T extends Obj_t> = <K extends keyof T>(api: K, db: Parameters<T[K]>[0]) => Promise<{ api: K, db: Returninfer_t<T[K]>}>
 export function CallObjInit<T extends Obj_t>(apiObj: T) {
   return function <K extends keyof T>({ api, db }: { api: K, db: Parameters<T[K]>[0] }): Promise<{ api: K, db: Returninfer_t<T[K]> }> {
     return new Promise(async (ok, err) => {
@@ -58,13 +57,15 @@ class HttpCreate {
 type MqttCreateParam_t = { url: string, op: mqttClient.IClientOptions, connect: (c: mqttClient.IConnackPacket) => void }
 class MqttCreate<Server extends Obj_t> {
   private mqttObj
+  private clientId
   disconnect
   constructor(apisObj: ObjExtendsReturninfer_t<Server>, { url, op, connect }: MqttCreateParam_t) {
     // url = "mqtt://39.97.216.195:1883"//tcp
     // url = "ws://39.97.216.195:8083/mqtt"//ws
     const call = CallObjInit(apisObj)
+    const clientId = this.clientId = Math.random().toString(16).substring(2, 8)
     const c = this.mqttObj = mqttClient.connect(url, {
-      clientId: Math.random().toString(16).substring(2, 8),
+      clientId,
       // username: op.username,
       // password: op.password,
       protocolVersion: 5,
@@ -80,6 +81,14 @@ class MqttCreate<Server extends Obj_t> {
     c.on("reconnect", () => console.log("mqttCliet.reconnect非主动断开连接"))
     c.on("offline", () => console.log("mqttCliet.offline下线"))
     c.on("outgoingEmpty", () => console.log("outgoingEmpty"))
+    c.subscribe(
+      this.clientId,  //通配符#+在//之间或者末尾:#任意层，+一层
+      {
+        qos: 2,//MQTT v5 中，如果你在订阅时将此选项设置为 1，那么服务端将不会向你转发你自己发布的消息
+      },
+      (e, granted) => {
+        //granted订阅成功，QoS 等级为
+      });
     c.on("message", (
       topic, //publish的第一个参数
       message
@@ -93,9 +102,9 @@ class MqttCreate<Server extends Obj_t> {
       }
     })
   }
-  subscribe<T extends keyof Server>(api: T extends string ? T : never) {
+  subscribe(api: keyof Server) {
     return this.mqttObj.subscribe(
-      api,  //通配符#+在//之间或者末尾:#任意层，+一层
+      this.clientId,  //通配符#+在//之间或者末尾:#任意层，+一层
       {
         qos: 2,//MQTT v5 中，如果你在订阅时将此选项设置为 1，那么服务端将不会向你转发你自己发布的消息
       },
@@ -103,7 +112,9 @@ class MqttCreate<Server extends Obj_t> {
         //granted订阅成功，QoS 等级为
       });
   }
-  publish: send_t<Server> = (api, db) => this.mqttObj.publish(api, JSON.stringify(db), { qos: 2 })
+  publish: send_t<Server> = (api, db) => {
+    this.mqttObj.publish(this.clientId, JSON.stringify({ api, db }), { qos: 2 })
+  }
 }
 export default { HttpCreate, MqttCreate }
 type getUse_t = {
@@ -112,27 +123,30 @@ type getUse_t = {
   c: number
 }
 export const testApi = {
-  async getUse(params: getUse_t) {
+  async getUse({ email, name, c }: getUse_t) {
     const token: z.ZodType<getUse_t> = z.object({
       email: z.string().email(),
       name: z.string(),
       c: z.number()
     });
-    await token.parseAsync(params)//.then(() => 123).catch(v => "error");
-    return 123
+    await token.parseAsync({ email, name, c })//.then(() => 123).catch(v => "error");
+    return { email, name }
   },
-  async test() {
+  async test(c: string) {
     // throw new Error(JSON.stringify({
     //     ok:"xxx"
     // }))
-    return "11"
+    if(c.length/2){
+      return 11111111
+    }else{
+      return "1111111111"
+    }
   }
 }
-
-// const ccc = new HttpCreate()
-//   .getInit<typeof testApi>(
-//     "",
-//     {
-//       test: n => n,
-//       getUse: n => n
-//     })("test",undefined)
+type c1_t=ObjExtendsReturninfer_t<typeof testApi>
+const c1: c1_t = {
+  test: async (c) => c,
+  getUse: async (c) => c
+}
+const c2 = new HttpCreate().getInit<typeof testApi>("", c1);
+const c3 = c2("test","111")

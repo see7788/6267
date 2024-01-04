@@ -1,11 +1,12 @@
 
 import aedes from "aedes"
 import { createServer as aedesfactory } from "aedes-server-factory"
-import { Obj_t,CallObjInit } from "../.t"
-type aedesCreateParam_t={ wsPort?: number, tcpPort?: number}
+import { Obj_t, CallObjInit } from "../.t"
+type aedesCreateParam_t = { wsPort?: number, tcpPort?: number }
 export default class <T extends Obj_t> {
     private c
-    constructor(apisObj: T ,{ wsPort, tcpPort }:aedesCreateParam_t) {
+    constructor(apisObj: T, { wsPort, tcpPort }: aedesCreateParam_t) {
+        const call = CallObjInit(apisObj)
         const c = this.c = new aedes();
         //aedes.connectedClients 获取客户端明细
         //连接
@@ -25,7 +26,15 @@ export default class <T extends Obj_t> {
         //发布
         c.on("publish", (packet) => {
             if (packet?.cmd) {
-                console.log("server.mqtt.publish", { ...packet, payload: packet?.payload?.toString() });
+                console.log("server.mqtt.publish", { ...packet, payload: packet.payload.toString() });
+                try {
+                    const { api, db } = JSON.parse(packet.payload.toString())
+                    call({ api, db }).then(v => {
+                        packet.payload = Buffer.from(JSON.stringify(v))
+                    })
+                } catch (e) {
+                    console.log("mqtt onmessage", e)
+                }
             }
         })
         //发布拦截
@@ -51,7 +60,7 @@ export default class <T extends Obj_t> {
             console.info("Aedes MQTT TCP server started and listening on port ", tcpPort);
         });
     }
-    close():Promise<void> {
-        return new Promise((ok)=>this.c.close(()=>ok()))
+    close(): Promise<void> {
+        return new Promise((ok) => this.c.close(() => ok()))
     }
 }
