@@ -1,4 +1,4 @@
-import t, { Obj_t, send_t, ObjExtendsReturninfer_t, CallObjInit } from "../.t"
+import t, { Obj_t, send_t, ObjExtendsReturninfer_t, CallObjInit } from "../public"
 import { StreamCreate } from "./streamPort"
 type WsCreateParam_t = { url: string, onopen: (e: Event) => void }
 export default {

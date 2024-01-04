@@ -1,13 +1,14 @@
 
 import aedes from "aedes"
 import { createServer as aedesfactory } from "aedes-server-factory"
-import { Obj_t, CallObjInit } from "../.t"
+import { Obj_t, CallObjInit } from "../public"
 type aedesCreateParam_t = { wsPort?: number, tcpPort?: number }
 export default class <T extends Obj_t> {
-    private c
+    obj
+    call
     constructor(apisObj: T, { wsPort, tcpPort }: aedesCreateParam_t) {
-        const call = CallObjInit(apisObj)
-        const c = this.c = new aedes();
+        this.call = CallObjInit(apisObj)
+        const c = this.obj = new aedes();
         //aedes.connectedClients 获取客户端明细
         //连接
         c.on('client', function (client) {
@@ -23,20 +24,7 @@ export default class <T extends Obj_t> {
         c.on('clientDisconnect', function (client) {
             console.log('server.mqtt.clientDisconnect: \x1b[31m' + (client ? client.id : client) + '\x1b[0m', 'to broker', c.id);
         });
-        //发布
-        c.on("publish", (packet) => {
-            if (packet?.cmd) {
-                console.log("server.mqtt.publish", { ...packet, payload: packet.payload.toString() });
-                try {
-                    const { api, db } = JSON.parse(packet.payload.toString())
-                    call({ api, db }).then(v => {
-                        packet.payload = Buffer.from(JSON.stringify(v))
-                    })
-                } catch (e) {
-                    console.log("mqtt onmessage", e)
-                }
-            }
-        })
+
         //发布拦截
         c.authorizePublish = function (client, packet, callback) {
             console.log("server.mqtt.authorizePublish", packet?.topic, packet?.payload?.toString());
@@ -60,7 +48,23 @@ export default class <T extends Obj_t> {
             console.info("Aedes MQTT TCP server started and listening on port ", tcpPort);
         });
     }
+    publishDemo() {
+        //发布
+        this.obj.on("publish", (packet) => {
+            if (packet?.cmd) {
+                console.log("server.mqtt.publish", { ...packet, payload: packet.payload.toString() });
+                try {
+                    const { api, db } = JSON.parse(packet.payload.toString())
+                    this.call({ api, db }).then(v => {
+                        packet.payload = Buffer.from(JSON.stringify(v))
+                    })
+                } catch (e) {
+                    console.log("mqtt onmessage", e)
+                }
+            }
+        })
+    }
     close(): Promise<void> {
-        return new Promise((ok) => this.c.close(() => ok()))
+        return new Promise((ok) => this.obj.close(() => ok()))
     }
 }

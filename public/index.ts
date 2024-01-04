@@ -5,7 +5,7 @@ type Returninfer_t<T extends (db: any) => Promise<any> | any> = ReturnType<T> ex
 export type Obj_t = { [k in string]: (db: any) => Promise<any> }// | any }
 export type ObjExtendsReturninfer_t<T extends Obj_t> = { [K in keyof T]: (db: Returninfer_t<T[K]>) => Promise<any> }// | any }
 export type send_t<T extends Obj_t> = <K extends keyof T>(api: K, db: Parameters<T[K]>[0]) => void
-export type call_t<T extends Obj_t> = <K extends keyof T>(api: K, db: Parameters<T[K]>[0]) => Promise<{ api: K, db: Returninfer_t<T[K]>}>
+export type call_t<T extends Obj_t> = <K extends keyof T>(api: K, db: Parameters<T[K]>[0]) => Promise<{ api: K, db: Returninfer_t<T[K]> }>
 export function CallObjInit<T extends Obj_t>(apiObj: T) {
   return function <K extends keyof T>({ api, db }: { api: K, db: Parameters<T[K]>[0] }): Promise<{ api: K, db: Returninfer_t<T[K]> }> {
     return new Promise(async (ok, err) => {
@@ -136,17 +136,17 @@ export const testApi = {
     // throw new Error(JSON.stringify({
     //     ok:"xxx"
     // }))
-    if(c.length/2){
+    if (c.length / 2) {
       return 11111111
-    }else{
+    } else {
       return "1111111111"
     }
   }
 }
-type c1_t=ObjExtendsReturninfer_t<typeof testApi>
+type c1_t = ObjExtendsReturninfer_t<typeof testApi>
 const c1: c1_t = {
   test: async (c) => c,
   getUse: async (c) => c
 }
 const c2 = new HttpCreate().getInit<typeof testApi>("", c1);
-const c3 = c2("test","111")
+const c3 = c2("test", "111")

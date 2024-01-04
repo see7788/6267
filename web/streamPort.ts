@@ -1,4 +1,4 @@
-import { Obj_t, CallObjInit, ObjExtendsReturninfer_t, send_t } from "../.t"
+import { Obj_t, CallObjInit, ObjExtendsReturninfer_t, send_t } from "../public"
 export type ResStream_analysisParam_t = "{}" | "\n" | "|||"
 class ResStream_analysis {
     transform: (chunk: string, controller: any) => void | Promise<void>
