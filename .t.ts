@@ -1,6 +1,7 @@
 import axios, { AxiosResponse } from "axios"
 import { z } from 'zod';
 import mqttClient from "mqtt"
+/////////////////
 type Returninfer_t<T extends (db: any) => Promise<any> | any> = ReturnType<T> extends Promise<infer R> ? R : ReturnType<T>
 export type Obj_t = { [k in string]: (db: any) => Promise<any> | any }
 export type ObjExtendsReturninfer_t<T extends Obj_t> = { [K in keyof T]: (db: Returninfer_t<T[K]>) => Promise<any> | any }
