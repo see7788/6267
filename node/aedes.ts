@@ -1,10 +1,10 @@
 
 import aedes from "aedes"
 import { createServer as aedesfactory } from "aedes-server-factory"
-import { Obj_t, CallObjInit } from "../public"
+import { Obj_t, CallObjInit } from "../public/ts"
 type aedesCreateParam_t = { wsPort?: number, tcpPort?: number }
 export default class <T extends Obj_t> {
-    obj
+    protected obj
     call
     constructor(apisObj: T, { wsPort, tcpPort }: aedesCreateParam_t) {
         this.call = CallObjInit(apisObj)
