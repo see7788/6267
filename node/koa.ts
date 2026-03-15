@@ -1,4 +1,4 @@
-import { Obj_t, CallObjInit } from "../public/ts"
+import { ObjBase_t, resFunCreate } from "../public/ts"
 import koa from "koa"
 import bodyParser from "koa-body"
 import Router from "koa-router"
@@ -9,8 +9,8 @@ export default class {
     constructor() {
         this.obj = new koa()
     }
-    routerTpl<T extends Obj_t>(path: string, apiObj: T) {
-        const call = CallObjInit(apiObj)
+    routerTpl<T extends ObjBase_t>(path: string, apiObj: T) {
+        const call = resFunCreate(apiObj)
         const router = new Router();
         router.use(cors({ credentials: true, }))// 允许跨域请求携带 cookie
         router.use(cookieParser());        // 解析 cookie

@@ -19,14 +19,4 @@ export const server = {
     expressCreate,
     AedesCreate,
     WsCreate: WsServerCreate,
-    ipcTest() {
-        //ipc.server.mqttCreate({ wsPort: 8083, tcpPort: 1883 })
-        //const c = ipc.client.mqttCreate<typeof testApi>()
-        //c.on()
-        // c.subscribe("param", "#")
-        // c.publish("return", "test", JSON.stringify({ a: "node" }) as any)
-        // server.wsCreate<typeof testApi>({ wsPort: 8085, apis: testApi })
-        //ipc.client.wsCreate("ws://127.0.0.1:8085")
-        //return { expressRequestHandler: server.expressRequestHandlerCreate(testApi) }
-    }
 }

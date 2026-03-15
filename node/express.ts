@@ -1,4 +1,4 @@
-import { Obj_t, CallObjInit } from "../public/ts"
+import { ObjBase_t, resFunCreate } from "../public/ts"
 import express from "express"
 import cors from 'cors';
 import bodyParser from "body-parser"
@@ -8,8 +8,8 @@ export default class {
     constructor() {
         this.obj = express();
     }
-    routerTpl<T extends Obj_t>(path: string, apiObj: T) {
-        const call = CallObjInit(apiObj)
+    routerTpl<T extends ObjBase_t>(path: string, apiObj: T) {
+        const call = resFunCreate(apiObj)
         this.obj.use(path, cors({ credentials: true, }))// 允许跨域请求携带 cookie
         this.obj.use(path, cookieParser());
         this.obj.use(path, express.json())

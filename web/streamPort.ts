@@ -1,56 +1,60 @@
-import { Obj_t, CallObjInit, send_t } from "../public/ts"
+import { ObjBase_t, resFunCreate, ObjExtendsReturninfer_t, send_t } from "../public/ts"
 import TransformStreamParam, { ResStream_analysisParam_t } from "../public/TransformStreamParam"
-type StreamCreateParam_t = {
+interface funParam_t {
     baudRate: number,
     analysisParam: ResStream_analysisParam_t;
-    ingOn: (c: boolean) => void
 }
-export default class <Server extends Obj_t> {
-    private callback
-    disconnect
-    private writer: WritableStreamDefaultWriter<Uint8Array> | undefined
-    constructor(apisObj: Server, public op: StreamCreateParam_t) {
-        this.callback = CallObjInit(apisObj)
-        this.disconnect = async () => console.log("StreamCreate 未打开")
+interface classParam_t extends funParam_t {
+    port: SerialPort,
+}
+class Init {
+    reader: ReadableStreamDefaultReader<any>
+    writer: WritableStreamDefaultWriter<Uint8Array>
+    readclose: Promise<void>
+    constructor(public op: classParam_t) {
+        this.writer = this.op.port.writable!.getWriter();
+        const decoder = new TextDecoderStream("utf-8", {});
+        this.readclose = this.op.port.readable!.pipeTo(decoder.writable);
+        this.reader = decoder.readable.pipeThrough(new TransformStream(new TransformStreamParam(this.op.analysisParam))).getReader();
     }
-    async connect() {
-        try {
-            const port = await navigator!.serial!.requestPort();
-            await port.open({ baudRate: this.op.baudRate });
-            this.writer = port.writable!.getWriter();
-            const decoder = new TextDecoderStream("utf-8", {});
-            const readclose = port.readable!.pipeTo(decoder.writable);
-            const reader = decoder.readable.pipeThrough(new TransformStream(new TransformStreamParam(this.op.analysisParam))).getReader();
-            this.disconnect = async () => {
-                await this.writer!.close()!.catch(console.log);
-                await reader!.cancel()!.catch(console.log);
-                await readclose!.catch(console.log);
-                await port!.close()!.catch(console.log);
-                this.op.ingOn(false);
+    async disconnect() {
+        await this.writer!.close()!.catch(console.log);
+        await this.reader!.cancel()!.catch(console.log);
+        await this.readclose!.catch(console.log);
+        await this.op.port!.close()!.catch(console.log);
+    }
+    async onInit<T extends ObjBase_t>(apisObj: ObjExtendsReturninfer_t<T>) {
+        const call = resFunCreate(apisObj)
+        while (this.op.port.readable?.getReader()) {
+            const { value, done } = await this.reader.read()
+            if (value) {
+                const c = JSON.parse(value)
+                call(c)
             }
-            this.op.ingOn(true);
-            while (this?.writer) {
-                const { value, done } = await reader.read()
-                if (value) {
-                    const c = JSON.parse(value)
-                    this.callback(c)
-                }
-                if (done) {
-                    reader.releaseLock();
-                }
+            if (done) {
+                this.reader.releaseLock();
             }
-        } catch (e) {
-            this.op.ingOn(false);
-            console.error("StreamCreate connect", e)
         }
     }
-    send: send_t<Server> = (api, db) => {
-        const c = new TextEncoder().encode(JSON.stringify({ api, db }))
-        if (this.writer?.write) {
-            this.writer.write(c)
-        } else {
-            this.op.ingOn(false);
-            console.error("StreamCreate send")
-        }
+    sendInit<T extends ObjBase_t>(): send_t<T> {
+        return (api, db) => new Promise((ok, err) => {
+            const c = new TextEncoder().encode(JSON.stringify([api, db]))
+            if (this.writer?.write) {
+                this.writer.write(c)
+                ok()
+            } else {
+                err("StreamCreate send")
+            }
+        })
+    }
+}
+
+export default async (op: funParam_t) => {
+    try {
+        const port: SerialPort = await navigator!.serial!.requestPort();
+        await port.open({ baudRate: op.baudRate });
+        return new Init({ ...op, port })
+    } catch (e) {
+        console.log(e)
     }
 }
